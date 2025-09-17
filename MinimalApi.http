@@ -1,0 +1,50 @@
+@MinimalApi_HostAddress = http://localhost:5102
+
+GET {{MinimalApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+### Person -Get All
+GET {{MinimalApi_HostAddress}}/people/
+Accept: application/json
+
+### Person -Get by Id - existing
+GET {{MinimalApi_HostAddress}}/people/2
+Accept: application/json
+
+### Person -Get by Id - not existing
+GET {{MinimalApi_HostAddress}}/people/5
+Accept: application/json
+
+### Person -Create
+POST {{MinimalApi_HostAddress}}/people/
+Content-Type: application/json
+
+{
+  "name" : "Cob"
+}
+
+### Person -Update id matches
+PUT {{MinimalApi_HostAddress}}/people/3
+Content-Type: application/json
+
+{
+  "id" : 3,
+  "name" : "Cob updated"
+}
+
+### Person -Update id does not match
+PUT {{MinimalApi_HostAddress}}/people/7
+Content-Type: application/json
+
+{
+  "id" : 7,
+  "name" : "Cob updated"
+}
+
+### Person -Delete works
+DELETE {{MinimalApi_HostAddress}}/people/3
+Content-Type: application/json
+
+### Person -Delete does mot work
+DELETE {{MinimalApi_HostAddress}}/people/3
+Content-Type: application/json
