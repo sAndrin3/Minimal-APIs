@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.EntityFrameworkCore;
 using MinimalApi.Context;
 using MinimalApi.Entities;
@@ -6,6 +7,7 @@ using MinimalApi.Entities;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.AddOutputCache();
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer("name=defaultConnection"));
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -23,11 +25,13 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseOutputCache();
+
 app.MapGet("/people", async (AppDbContext context) =>
 {
     var people = await context.People.ToListAsync();
     return TypedResults.Ok(people);
-});
+}).CacheOutput(c => c.Expire(TimeSpan.FromSeconds(60)).Tag("people-get"));
 
 app.MapGet("/people/{id:int}", async Task<Results<Ok<Person>, NotFound>> (int id, AppDbContext context) =>
 {
@@ -42,15 +46,22 @@ app.MapGet("/people/{id:int}", async Task<Results<Ok<Person>, NotFound>> (int id
 
 }).WithName("GetPerson");
 
-app.MapPost("/people", async (Person person, AppDbContext context) =>
+app.MapPost("/people", async (
+    Person person, 
+    AppDbContext context,
+    IOutputCacheStore outputCacheStore
+    ) =>
 {
     context.Add(person);
     await context.SaveChangesAsync();
+    await outputCacheStore.EvictByTagAsync("people-get", default);
     return TypedResults.CreatedAtRoute(person,  "GetPerson", new {id = person.Id});
 });
 
 app.MapPut("/people/{id:int}", async Task<Results<BadRequest<string>, NotFound, NoContent>>
-    (int id, Person person, AppDbContext context) =>
+    (int id, Person person,
+        AppDbContext context,
+        IOutputCacheStore outputCacheStore) =>
 {
     if (id != person.Id)
     {
@@ -66,10 +77,14 @@ app.MapPut("/people/{id:int}", async Task<Results<BadRequest<string>, NotFound, 
 
     context.Update(person);
     await context.SaveChangesAsync();
+    await outputCacheStore.EvictByTagAsync("people-get", default);
     return TypedResults.NoContent();
 });
 
-app.MapDelete("/people/{id:int}", async Task<Results<NotFound, NoContent>> (int id, AppDbContext context) =>
+app.MapDelete("/people/{id:int}", async Task<Results<NotFound, NoContent>> (
+    int id, 
+    AppDbContext context,
+    IOutputCacheStore outputCacheStore) =>
 {
     var deletedRecords = await context.People.Where(p => p.Id == id).ExecuteDeleteAsync();
 
@@ -77,6 +92,8 @@ app.MapDelete("/people/{id:int}", async Task<Results<NotFound, NoContent>> (int 
     {
         return TypedResults.NotFound();
     }
+    
+    await outputCacheStore.EvictByTagAsync("people-get", default);
     
     return TypedResults.NoContent();
 });

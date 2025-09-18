@@ -20,7 +20,7 @@ POST {{MinimalApi_HostAddress}}/people/
 Content-Type: application/json
 
 {
-  "name" : "Cob"
+  "name" : "Bob"
 }
 
 ### Person -Update id matches
