@@ -25,12 +25,29 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Minimal API");
+
+        // Option 1:
+        // if (app.Environment.IsDevelopment())
+        // {
+        //     options.EnablePersistAuthorization();
+        // }
+
+        // Option 2:
+#if DEBUG
+        options.EnablePersistAuthorization();
+#endif
+    });
 }
 
 app.UseHttpsRedirection();
 
 app.UseOutputCache();
+
+app.MapGet("/configuration",
+    (IConfiguration configuration) => configuration.GetValue<string>("secret") ?? "No secret was found");
 
 app.MapGet("/people", async (AppDbContext context) =>
 {
@@ -48,25 +65,24 @@ app.MapGet("/people/{id:int}", async Task<Results<Ok<Person>, NotFound>> (int id
     }
 
     return TypedResults.Ok(person);
-
 }).WithName("GetPerson");
 
 app.MapPost("/people", async (
-    Person person, 
+    Person person,
     AppDbContext context,
     IOutputCacheStore outputCacheStore
-    ) =>
+) =>
 {
     context.Add(person);
     await context.SaveChangesAsync();
     await outputCacheStore.EvictByTagAsync("people-get", default);
-    return TypedResults.CreatedAtRoute(person,  "GetPerson", new {id = person.Id});
+    return TypedResults.CreatedAtRoute(person, "GetPerson", new { id = person.Id });
 });
 
 app.MapPut("/people/{id:int}", async Task<Results<BadRequest<string>, NotFound, NoContent>>
-    (int id, Person person,
-        AppDbContext context,
-        IOutputCacheStore outputCacheStore) =>
+(int id, Person person,
+    AppDbContext context,
+    IOutputCacheStore outputCacheStore) =>
 {
     if (id != person.Id)
     {
@@ -87,7 +103,7 @@ app.MapPut("/people/{id:int}", async Task<Results<BadRequest<string>, NotFound, 
 });
 
 app.MapDelete("/people/{id:int}", async Task<Results<NotFound, NoContent>> (
-    int id, 
+    int id,
     AppDbContext context,
     IOutputCacheStore outputCacheStore) =>
 {
@@ -97,9 +113,9 @@ app.MapDelete("/people/{id:int}", async Task<Results<NotFound, NoContent>> (
     {
         return TypedResults.NotFound();
     }
-    
+
     await outputCacheStore.EvictByTagAsync("people-get", default);
-    
+
     return TypedResults.NoContent();
 });
 

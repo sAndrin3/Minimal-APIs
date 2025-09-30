@@ -48,3 +48,7 @@ Content-Type: application/json
 ### Person -Delete does mot work
 DELETE {{MinimalApi_HostAddress}}/people/3
 Content-Type: application/json
+
+###
+GET http://localhost:5102/configuration/
+Accept: application/json
