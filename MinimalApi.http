@@ -52,3 +52,11 @@ Content-Type: application/json
 ###
 GET http://localhost:5102/configuration/
 Accept: application/json
+
+###
+GET http://localhost:5102/getConnectionString/
+Accept: application/json
+
+###
+GET http://localhost:5102/weatherforecast/
+Accept: application/json

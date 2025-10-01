@@ -1,10 +1,33 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using MinimalApi.ConnectionString;
 using MinimalApi.Context;
 using MinimalApi.Entities;
+using MinimalApi.Jobs;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+
+
+builder.Services.AddOptions<ConnectionStrings>()
+    .Bind(builder.Configuration.GetSection(ConnectionStrings.Section))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services.AddOptions<APIConfigurations>()
+    .Bind(builder.Configuration.GetSection(APIConfigurations.Section))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services.AddOptions<Notifications>()
+    .Bind(builder.Configuration.GetSection(Notifications.Section))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services.AddHostedService<RecurringTask>();
 
 // Add services to the container.
 // builder.Services.AddOutputCache();
@@ -119,4 +142,36 @@ app.MapDelete("/people/{id:int}", async Task<Results<NotFound, NoContent>> (
     return TypedResults.NoContent();
 });
 
+app.MapGet("/getConnectionString", (IOptions<ConnectionStrings> options) =>
+{
+    var connectionString = options.Value.DB;
+
+    return connectionString!;
+});
+
+var summaries = new[]
+{
+    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
+};
+
+app.MapGet("/weatherforecast", (IOptionsSnapshot<APIConfigurations> optionsSnapshot) =>
+    {
+        var weatherForecastsToReturn = optionsSnapshot.Value.WeatherForecastsToReturn;
+        var forecast = Enumerable.Range(1, weatherForecastsToReturn).Select(index =>
+                new WeatherForecast
+                (
+                    DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+                    Random.Shared.Next(-20, 55),
+                    summaries[Random.Shared.Next(summaries.Length)]
+                ))
+            .ToArray();
+        return forecast;
+    })
+    .WithName("GetWeatherForecast");
+
 app.Run();
+
+internal record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+{
+    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+}
